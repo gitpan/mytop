@@ -1,3 +1,10 @@
+VERSION 0.9:
+
+  Set $0 to `mytop' to make it easier to spot and to keep some of the
+  command-line args out of view.
+
+  Remembered to include the README in the distribution.
+
 VERSION 0.8:
 
   Added a "Queries Per Second" or qps mode. You can enter qps mode by
