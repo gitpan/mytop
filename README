@@ -1,9 +1,13 @@
-README for mytop version 0.9
+README for mytop version 1.0
 ============================
 
 WEB
 
-  http://public.yahoo.com/~jzawodn/mytop/
+  http://jeremy.zawodny.com/mysql/mytop/
+
+MAILING LIST
+
+  http://www.advanced-mysql.com/cgi-bin/mailman/listinfo/mytop
 
 ABOUT
 
@@ -24,13 +28,15 @@ INSTALLATION
   make test
   make install
 
+  The test is a bit stupid, but it's there from completeness.
+
 DOCUMENTATION
 
   man mytop
 
 AUTHOR
 
-  Jeremy D. Zawodny <jzawodn@yahoo-inc.com>
+  Jeremy D. Zawodny <Jeremy@Zawodny.com>
 
 COPYRIGHT
 

@@ -1,3 +1,48 @@
+VERSION 1.0:
+
+  Released 1.0 on April 27, 2002.
+
+  Provided a fix for cases when we try remove the domain name from the
+  display even if it is actually an IP address.
+
+  Fixed a ton of formatting bugs and "use of uninitialized value"
+  errors.
+
+  Adjusted column widths and headinds a bit to fit the common cases
+  that I usually see.
+
+  Added "Now/Sec" to the header, next to "Avg/Sec".  The former is the
+  "real-time" queries per second since the last mytop refresh, while
+  the later is the queries per second since the server was last reset.
+
+  Added the `o' key to toggle the sort order.
+
+  Changed the `h' key to `H' for toggling the header.
+
+  Added the `h' key to filter based on hostname.
+
+  Changed the "Query Info" colum to "Query or State" because if there
+  is no query running (like when a slave is replicating off the master
+  and you're watching the master), it'll show the state in that
+  column.
+
+  The real-time queries/sec are computed using Time::HiRes if it is
+  available, making the numbers much more accurate.
+
+  Added the `e' key to EXPLAIN a query.  It works a lot like the `f'
+  key to get the full SQL of a query.  Also, if you're already looking
+  at the full SQL (having pressed `f'), you can hit `e' to get it
+  explained if you'd like.
+
+  The web site has moved to: http://jeremy.zawodny.com/mysql/mytop/
+
+  There is now a mailing list.  See the web site for details.  Or look
+  here to subscribe:
+
+    http://www.advanced-mysql.com/cgi-bin/mailman/listinfo/mytop
+
+  That's all.
+
 VERSION 0.9:
 
   Set $0 to `mytop' to make it easier to spot and to keep some of the
