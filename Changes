@@ -1,0 +1,100 @@
+VERSION 0.8:
+
+  Added a "Queries Per Second" or qps mode. You can enter qps mode by
+  hitting the `m' key. In this mode, mytop will write out one integer
+  per second. The number written reflects the number of queries
+  executed by the server in the previous one second interval.
+
+  mytop is now distributed as a true Perl package. There's a normal
+  Makefile.PL, which means it can be installed via the standard
+  mantra:
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+  This should make life a bit easier. It also means that you could
+  install it using the CPAN shell.
+
+VERSION 0.7:
+
+  Basic support for Windows. The screen clearing doesn't work (not
+  sure how to do that). But most everything else seems to be
+  functional there.
+
+VERSION 0.6:
+
+  Some minor code cleanup.
+
+VERSION 0.5:
+
+  Fixed some field widths to handle larger values.
+
+VERSION 0.4:
+
+  Added -P command-line argument (to specify a port number).
+
+  Fixes to make mytop output better on small terminals.
+
+  Added `i' hotkey to toggle the display of Idle (sleeping) threads.
+
+  Other minor updates.
+
+VERSION 0.3:
+
+  Updated documentation to reflect command-line arguments.
+
+  Added support for long and short command-line arguments.
+
+  Optional color support via Term::ANSIColor.
+
+  Added batch mode. In batch mode, mytop doesn't clear the screen and
+  only outputs data once. It's useful for running periodically and
+  capturing the data to a file. In batch mode, there is no limit to
+  the number of threads listed.
+
+  Fixed division by zero bug in key cache code.
+
+  Implemented the `r' keystroke to reset the status counters via a
+  FLUSH STATUS call.
+
+  If you resize your xterm, mytop now adapts somewhat well.
+
+  Implemented the `p' keystroke to pause the display.
+
+  Implemented the `h' keystroke to toggle the header.
+
+  Implemented the `k' keystroke to kill a thread.
+
+  Fixed various formatting bugs in not-so-rare cases.
+
+  Added more specific error messages from DBI on connect failure.
+
+
+VERSION 0.2:
+
+  Added support for non-standard port numbers. But DBD::mysql seems to
+  ignore it. Try and see if it works for you. Doesn't for me on two
+  platforms.
+
+  Fixed some spelling problems.
+
+  Suggestions from "Richard Ellerbrock" <richarde@eskom.co.za>:
+
+    * If no host is specified, assume localhost.
+
+    * If no user is specified, assume root.
+
+    * Allow C-c to break.
+
+    * Better error handling and reporting on connect.
+
+  Suggestions from "William R. Mattil" <wrm@newton.irngtx.tel.gte.com>:
+
+    * Allow blank password, by setting initial default to ''.
+
+
+VERSION 0.1:
+
+  None. Initial release.
