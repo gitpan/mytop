@@ -1,3 +1,26 @@
+VERSION 1.2:
+
+  Released 1.2 on October 27, 2002.
+
+  Better handle the MySQL server going off-line (shouldn't die with
+  illegal divsion by zero errors anymore).
+
+  Suggestion from Jeremy Tinley <jtinley@unirez.com>:
+
+    * Make the Host column large enough to handle IP addresses.
+      Slightly change other field widths to compensate.
+
+  Add query cache stats.  Formatting of the values should probably be
+  cleaned up more.
+
+VERSION 1.1:
+
+  Not released.
+
+  Updated the option handling as suggested by Paul DuBois
+  <paul@snake.net> so that --pass and --password both work.  Also
+  noted that OS X is supported.
+
 VERSION 1.0:
 
   Released 1.0 on April 27, 2002.
@@ -8,7 +31,7 @@ VERSION 1.0:
   Fixed a ton of formatting bugs and "use of uninitialized value"
   errors.
 
-  Adjusted column widths and headinds a bit to fit the common cases
+  Adjusted column widths and headings a bit to fit the common cases
   that I usually see.
 
   Added "Now/Sec" to the header, next to "Avg/Sec".  The former is the
@@ -21,7 +44,7 @@ VERSION 1.0:
 
   Added the `h' key to filter based on hostname.
 
-  Changed the "Query Info" colum to "Query or State" because if there
+  Changed the "Query Info" column to "Query or State" because if there
   is no query running (like when a slave is replicating off the master
   and you're watching the master), it'll show the state in that
   column.

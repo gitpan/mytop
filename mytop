@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #
-# $Id: mytop,v 1.5 2002/04/27 23:03:30 jzawodn Exp $
+# $Id: mytop,v 1.9 2002/10/27 06:49:33 jzawodn Exp $
 
 =pod
 
@@ -17,7 +17,7 @@ use strict;
 use DBI;
 use Getopt::Long;
 
-$main::VERSION = "1.0";
+$main::VERSION = "1.2";
 
 $|++;
 $0 = 'mytop';
@@ -80,6 +80,7 @@ my %config = (
 my %qcache = ();  ## The query cache--used for full query info support.
 my %dbcache = (); ## The db cache.  This should be merged at some point.
 my $num_q;        ## Queries counter for computing qps
+my $num_qc;       ## Query cach hits counter for qchps
 
 my $CLEAR = $WIN ? '': `clear`;
 
@@ -117,19 +118,19 @@ if (-e $config)
 
 use vars qw($opt_foo);
 
-Getopt::Long::Configure('no_ignore_case');
+Getopt::Long::Configure('no_ignore_case', 'bundling');
 
 GetOptions( "color!"              => \$config{color},
             "user|u=s"            => \$config{user},
-            "pass|p=s"            => \$config{pass},
+            "pass|password|p=s"   => \$config{pass},
             "database|db|d=s"     => \$config{db},
             "host|h=s"            => \$config{host},
             "port|P=i"            => \$config{port},
             "socket|S=s"          => \$config{socket},
             "delay|s=i"           => \$config{delay},
-            "batch|batchmode|b!"  => \$config{batchmode},
+            "batch|batchmode|b"   => \$config{batchmode},
             "header!"             => \$config{header},
-            "idle|i!"             => \$config{idle},
+            "idle|i"              => \$config{idle},
           );
 
 ## User may have put the port with the host.
@@ -229,14 +230,29 @@ ReadMode($RM_RESET) unless $config{batchmode};
 ## Get static data
 
 my $db_version;
+my $have_query_cache;
 
 my @variables = Hashes("show variables");
 
 foreach (@variables)
 {
-    next unless $_->{Variable_name} eq "version";
-    $db_version = $_->{Value};
-    last;
+    if ($_->{Variable_name} eq "version")
+    {
+        $db_version = $_->{Value};
+        next;
+    }
+    if ($_->{Variable_name} eq "have_query_cache")
+    {
+        if ($_->{Value} eq 'YES')
+        {
+            $have_query_cache = 1;
+        }
+        else
+        {
+            $have_query_cache = 0;
+        }
+        next;
+    }
 }
 
 #########################################################################
@@ -279,7 +295,7 @@ while (1)
 
     ## q - quit
 
-    if ($key =~ /q/i)
+    if ($key eq 'q')
     {
         ReadMode($RM_RESET);
         print "\n";
@@ -288,7 +304,7 @@ while (1)
 
     ## m - mode swtich to qps
 
-    if ($key =~ /m/i)
+    if ($key eq 'm')
     {
         $config{mode} = 'qps';
         Clear() unless $config{batchmode};
@@ -298,7 +314,7 @@ while (1)
 
     ## s - seconds of delay
 
-    if ($key =~ /s/)
+    if ($key eq 's')
     {
         ReadMode($RM_RESET);
 
@@ -322,7 +338,7 @@ while (1)
 
     ## u - username based filter
 
-    if ($key =~ /u/)
+    if ($key eq 'u')
     {
         ReadMode($RM_RESET);
         print RED(), "Which user (blank for all): ", RESET();
@@ -335,7 +351,7 @@ while (1)
 
     ## d - database name based filter
 
-    if ($key =~ /d/)
+    if ($key eq 'd')
     {
         ReadMode($RM_RESET);
         print RED(), "Which database (blank for all): ", RESET();
@@ -373,7 +389,7 @@ while (1)
 
     ## p - pause
 
-    if ($key =~ /p/i)
+    if ($key eq 'p')
     {
         print RED(), "-- paused. press any key to resume --", RESET();
         ReadKey(0);
@@ -577,6 +593,13 @@ sub GetData()
         my @recs = Hashes("show status");
         my %S;
 
+        ## if the server died or we lost connectivity
+        if (not @recs)
+        {
+            ReadMode($RM_RESET);
+            exit 1;
+        }
+
         ## get high-res or low-res time
         if ($HAS_TIME)
         {
@@ -606,7 +629,6 @@ sub GetData()
         }
 
         $num_q = $S{Questions};
-        $last_time = $now_time;
 
         ## Compute Key Cache Hit Stats
 
@@ -614,6 +636,41 @@ sub GetData()
 
         my $cache_hits_percent = (100-($S{Key_reads}/$S{Key_read_requests}) * 100);
         $cache_hits_percent = sprintf("%2.2f",$cache_hits_percent);
+
+        ## Query Cache info
+        ##
+        ## mysql> show status like 'qcache%';
+        ## +-------------------------+----------+
+        ## | Variable_name           | Value    |
+        ## +-------------------------+----------+
+        ## | Qcache_queries_in_cache | 81       |
+        ## | Qcache_inserts          | 4961668  |
+        ## | Qcache_hits             | 1374170  |
+        ## | Qcache_not_cached       | 5656249  |
+        ## | Qcache_free_memory      | 33164800 |
+        ## | Qcache_free_blocks      | 2        |
+        ## | Qcache_total_blocks     | 168      |
+        ## +-------------------------+----------+
+
+        my $query_cache_hits             = 0;
+        my $query_cache_hits_per_sec     = 0;
+        my $now_query_cache_hits_per_sec = 0;
+
+        if ($have_query_cache)
+        {
+            $query_cache_hits = $S{Qcache_hits};
+            $query_cache_hits_per_sec = $S{Qcache_hits} / $S{Uptime};
+
+            if (defined $last_time and $last_time != $now_time)
+            {
+                my $q_delta = $S{Qcache_hits} - $num_qc;
+                my $t_delta = $now_time - $last_time;
+                $now_query_cache_hits_per_sec = sprintf "%.2f", $q_delta / $t_delta;
+            }
+        }
+
+        $num_qc = $S{Qcache_hits};
+        $last_time = $now_time;
 
         ## Server Uptime in meaningful terms...
 
@@ -643,7 +700,6 @@ sub GetData()
 
         printf "%-${host_width}s%${up_width}s\n",
             "MySQL on $config{host} ($db_version)", "up $uptime $current_time";
-
         $lines_left--;
 
         printf " Queries Total: %-13s  ", commify($num_queries);
@@ -651,19 +707,28 @@ sub GetData()
         printf "Now/Sec: %-4.2f  ", $now_queries_per_sec
             if defined $now_queries_per_sec;
         printf "Slow: %s\n", commify($S{Slow_queries});
-
         $lines_left--;
 
-        printf " Threads Total: %-5s     Active: %-5s Cached: %-5s\n",
-            commify($S{Threads_connected}), commify($S{Threads_running}),
-                commify($S{Threads_cached});
+        if ($have_query_cache)
+        {
+            printf " Cache Hits   : %-13s  ", commify($query_cache_hits);
+            printf "Avg/Sec: %-4.2f  ", $query_cache_hits_per_sec;
+            printf "Now/Sec: %-4.2f  ", $now_query_cache_hits_per_sec;
+            printf "Ratio: %-2.2f%%", (($query_cache_hits / $num_queries) * 100);
+            printf "\n";
+            $lines_left--;
+        }
 
+        printf " Threads Total: %-5s     Active: %-5s Cached: %-5s\n",
+            commify($S{Threads_connected}),
+            commify($S{Threads_running}),
+            commify($S{Threads_cached});
         $lines_left--;
 
         printf " Key Efficiency: %2.2f%%  Bytes in: %s  Bytes out: %s\n\n",
-            $cache_hits_percent, commify($S{Bytes_received}),
-                commify($S{Bytes_sent});
-
+            $cache_hits_percent,
+            commify($S{Bytes_received}),
+            commify($S{Bytes_sent});
         $lines_left--;
 
     }
@@ -674,32 +739,24 @@ sub GetData()
     ##
 
     #my $sz = $width - 52;
-    my @sz   = (7, 9, 9, 11, 6, 6);
+    my @sz   = (8, 9, 15, 10, 9, 6);
     my $used = scalar(@sz) + Sum(@sz);
     my $free = $width - $used;
 
     print BOLD();
 
-    printf "%7s %9s %9s %11s %6s %6s %-${free}s\n",
-        'Id','User','Host','DB','Time', 'Cmd', 'Query or State';
+    printf "%8s %9s %15s %10s %9s %6s %-${free}s\n",
+        'Id','User','Host/IP','DB','Time', 'Cmd', 'Query or State';
 
     print RESET();
 
-    printf "%7s %9s %9s %11s %6s %6s %-${free}s\n",
-        '--','----','----','--','----', '---', '----------';
+    ##      Id User Host DB
+    printf "%8s %9s %15s %10s %9s %6s %-${free}s\n",
+        '--','----','-------','--','----', '---', '----------';
 
     $lines_left -= 2;
 
-    my $proc_cmd;
-
-    if ($db_version =~ /3\.23\./)
-    {
-        $proc_cmd = "show full processlist";
-    }
-    else
-    {
-        $proc_cmd = "show processlist";
-    }
+    my $proc_cmd = "show full processlist";
 
     my @data = Hashes($proc_cmd);
 
@@ -801,10 +858,9 @@ sub GetData()
             print GREEN()  if $thread->{Command} eq 'Connect';
         }
 
-        printf "%7d %9.9s %9.9s %11.11s %6d %6.6s %-${free}.${free}s\n",
+        printf "%8d %9.9s %15.15s %10.10s %9d %6.6s %-${free}.${free}s\n",
             $thread->{Id}, $thread->{User}, $thread->{Host}, $thread->{db},
             $thread->{Time}, $thread->{Command}, $smInfo;
-
 
         print RESET() if $HAS_COLOR;
 
@@ -1048,6 +1104,7 @@ B<mytop> is known to work on:
 
   * Linux (2.2.x, 2.4.x)
   * FreeBSD (2.2, 3.x, 4.x)
+  * Mac OS X
   * BSDI 4.x
   * Solaris 2.x
   * Windows NT 4.x (ActivePerl)
@@ -1149,7 +1206,7 @@ just one.
 
 Username to use when logging in to the MySQL server. Default: ``root''.
 
-=item B<-p> or B<-password> password
+=item B<-p> or B<-pass> or B<-password> password
 
 Password to use when logging in to the MySQL server. Default: none.
 
@@ -1458,6 +1515,10 @@ display even if it is actually an IP address.
 =item Sasha Pachev <sasha@mysql.com>
 
 Provided the idea of real-time queries per second in the main display.
+
+=item Paul DuBois <paul@snake.net>
+
+Pointed out some option-handling bugs.
 
 =back
 
